@@ -1,0 +1,21 @@
+{{define "title"}}{{.Photo.Filename}} · Photos{{end}}
+{{define "content"}}
+{{with .Photo}}
+<figure class="photo">
+  <a href="/p/{{.ID}}/original"><img src="/p/{{.ID}}/original" alt="{{.Filename}}"></a>
+  <figcaption>
+    <strong>{{.Filename}}</strong>
+    <span>{{humanBytes .SizeBytes}} · uploaded by {{.OwnerName}} on {{.CreatedAt.Format "Jan 2, 2006"}} · expires in {{daysLeft .ExpiresAt}} days</span>
+  </figcaption>
+</figure>
+{{end}}
+<div class="actions">
+  <a class="button secondary" href="/">Back to gallery</a>
+  <a class="button secondary" href="/p/{{.Photo.ID}}/original">Open original</a>
+  {{if .CanDelete}}
+  <form method="post" action="/p/{{.Photo.ID}}/delete" onsubmit="return confirm('Delete this photo?')">
+    <button class="button danger">Delete</button>
+  </form>
+  {{end}}
+</div>
+{{end}}

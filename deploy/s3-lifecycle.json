@@ -1,0 +1,10 @@
+{
+  "Rules": [
+    {
+      "ID": "simple-photos-expire",
+      "Status": "Enabled",
+      "Filter": { "Prefix": "" },
+      "Expiration": { "Days": 31 }
+    }
+  ]
+}

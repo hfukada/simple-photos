@@ -1,0 +1,62 @@
+# simple-photos
+
+A small, self-hosted photo gallery and uploader. Photos are stored in S3, and their metadata lives in Postgres. Sign-in is with Google.
+
+- **Google sign-in.** You can limit access to specific emails or domains.
+- **Multi-select uploads.** Pick several files in the file dialog or drag and drop them. Uploads run three at a time, each with its own progress bar, and a failed file doesn't stop the rest.
+- **10 MB per photo.** The browser checks the size first, and the server enforces the limit. The server also identifies the image type from the file's contents (JPEG, PNG, GIF, WebP, HEIC, AVIF) and ignores the type the client claims.
+- **Photos expire after 30 days.** An expired photo disappears from the gallery right away. A background job deletes its S3 objects and database row every 15 minutes. An optional S3 lifecycle rule acts as a backstop.
+- **Grid gallery view.** The gallery is a square-cropped, lazy-loaded grid with paging through older photos. The browser makes a 480px thumbnail at upload time, so the server does no image processing.
+- **Light on resources.** It's one static Go binary with templates and assets built in, and it used under 50 MB of RAM in testing. The S3 bucket stays private, and images are served through short-lived presigned URLs, so photo traffic doesn't pass through your server.
+
+## Why Postgres for metadata
+
+You already run Postgres, so storing metadata there costs nothing extra. The app needs three small tables (`users`, `sessions`, `photos`), and they're created automatically at startup.
+
+## Setup
+
+### 1. Google OAuth client
+In Google Cloud Console, go to **APIs & Services → Credentials → Create OAuth client ID → Web application**.
+- Authorized redirect URI: `https://photos.example.com/auth/callback`
+
+### 2. Bucket
+Create a **private** bucket. Any S3-compatible provider works:
+- **Cloudflare R2** has no egress fees. Set `S3_ENDPOINT=https://<account>.r2.cloudflarestorage.com` and `S3_REGION=auto`.
+- **Backblaze B2** and **Wasabi** also work.
+
+The access key needs `s3:PutObject`, `s3:GetObject` and `s3:DeleteObject` on the bucket.
+
+Uploads go through the app, so the bucket doesn't need a CORS rule.
+
+Optional backstop: add a lifecycle rule that expires objects after 31 days.
+```sh
+aws s3api put-bucket-lifecycle-configuration --bucket my-photos \
+  --lifecycle-configuration file://deploy/s3-lifecycle.json
+```
+Alternatively, set `S3_MANAGE_LIFECYCLE=true` and the app installs the rule itself. That replaces any existing rules on the bucket, so only use it on a bucket dedicated to this app.
+
+### 3. Database
+```sh
+sudo -u postgres createuser -P photos
+sudo -u postgres createdb -O photos photos
+```
+
+### 4. Run
+```sh
+go build -o simple-photos .             # or: docker build -t simple-photos .
+sudo install simple-photos /usr/local/bin/
+sudo cp .env.example /etc/simple-photos.env && sudo chmod 600 /etc/simple-photos.env  # then fill it in
+sudo cp deploy/simple-photos.service /etc/systemd/system/
+sudo systemctl enable --now simple-photos
+```
+Put it behind a TLS reverse proxy. There's a sample in `deploy/Caddyfile`. When `BASE_URL` starts with `https://`, the app sets cookies as `Secure`.
+
+All settings are documented in `.env.example`.
+
+## Development
+
+```sh
+go test ./...                                              # unit tests
+TEST_DATABASE_URL=postgres://localhost/photos_test go test -p 1 ./...   # + integration tests
+```
+The integration tests use a real Postgres database and an in-memory store in place of S3.

@@ -1,0 +1,26 @@
+{{define "content"}}
+<section id="uploader" class="uploader" data-max-bytes="{{.MaxBytes}}">
+  <label class="button">
+    Upload photos
+    <input id="file-input" type="file" accept="{{.Accept}}" multiple hidden>
+  </label>
+  <span class="hint">or drop images anywhere · up to 10 MB each · removed after {{.TTLDays}} days</span>
+  <ul id="upload-list" class="upload-list"></ul>
+</section>
+
+{{if .Photos}}
+<ul class="grid" data-view="{{.View}}">
+  {{range .Photos}}
+  <li>
+    <a href="/p/{{.ID}}" title="{{.Filename}} · {{.OwnerName}}">
+      <img src="/p/{{.ID}}/thumb" alt="{{.Filename}}" loading="lazy" decoding="async">
+    </a>
+  </li>
+  {{end}}
+</ul>
+{{if .Next}}<p class="more"><a class="button secondary" href="/?before={{.Next}}">Older photos</a></p>{{end}}
+{{else}}
+<p class="empty">No photos yet. Upload some!</p>
+{{end}}
+<script src="/static/upload.js" defer></script>
+{{end}}
