@@ -15,9 +15,18 @@ You already run Postgres, so storing metadata there costs nothing extra. The app
 
 ## Setup
 
+### 0. DNS
+Point `sasoshi.party` (and optionally `www.sasoshi.party`) A/AAAA records at your server. Ports 80 and 443 must be reachable so Caddy can get a certificate.
+
 ### 1. Google OAuth client
-In Google Cloud Console, go to **APIs & Services → Credentials → Create OAuth client ID → Web application**.
-- Authorized redirect URI: `https://photos.example.com/auth/callback`
+In [Google Cloud Console](https://console.cloud.google.com/), create or select a project, then:
+1. **APIs & Services → OAuth consent screen**: choose **External**. Set the app name, support email and authorized domain `sasoshi.party`. The only scopes needed are `openid`, `email` and `profile`, which Google treats as non-sensitive, so no verification review is required. While the app is in **Testing** status, only the test users you list can sign in; click **Publish app** to let anyone on your allowlist in.
+2. **APIs & Services → Credentials → Create credentials → OAuth client ID → Web application**:
+   - Authorized JavaScript origin: `https://sasoshi.party`
+   - Authorized redirect URI: `https://sasoshi.party/auth/callback`
+3. Put the client ID and secret in `GOOGLE_CLIENT_ID` / `GOOGLE_CLIENT_SECRET`.
+
+For local development, also add `http://localhost:8080/auth/callback` as a redirect URI and run with `BASE_URL=http://localhost:8080`.
 
 ### 2. Bucket
 Create a **private** bucket. Any S3-compatible provider works:

@@ -16,7 +16,7 @@ const (
 
 type Config struct {
 	ListenAddr  string
-	BaseURL     string // e.g. https://photos.example.com (no trailing slash)
+	BaseURL     string // e.g. https://sasoshi.party (no trailing slash)
 	DatabaseURL string
 
 	GoogleClientID     string
