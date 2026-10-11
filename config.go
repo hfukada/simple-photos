@@ -16,7 +16,7 @@ const (
 
 type Config struct {
 	ListenAddr  string
-	BaseURL     string // e.g. https://sasoshi.party (no trailing slash)
+	BaseURL     string // e.g. https://photos.example.com (no trailing slash)
 	DatabaseURL string
 
 	GoogleClientID     string
@@ -30,7 +30,7 @@ type Config struct {
 	// S3PublicEndpoint is the endpoint browsers use to fetch photos via
 	// presigned URLs, when it differs from the one the server uses (e.g.
 	// MinIO reachable as http://minio:9000 inside Docker but
-	// https://s3.sasoshi.party from outside). Defaults to S3Endpoint.
+	// https://s3.<domain> from outside). Defaults to S3Endpoint.
 	S3PublicEndpoint string
 	S3PathStyle      bool
 	S3Prefix         string

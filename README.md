@@ -16,14 +16,14 @@ You already run Postgres, so storing metadata there costs nothing extra. The app
 ## Setup
 
 ### 0. DNS
-Point `sasoshi.party` (and optionally `www.sasoshi.party`) A/AAAA records at your server. Ports 80 and 443 must be reachable so Caddy can get a certificate.
+Point your domain (and optionally `www.<domain>`) A/AAAA records at your server. With Docker Compose, also add `s3.<domain>`. Ports 80 and 443 must be reachable so Caddy can get a certificate.
 
 ### 1. Google OAuth client
 In [Google Cloud Console](https://console.cloud.google.com/), create or select a project, then:
-1. **APIs & Services → OAuth consent screen**: choose **External**. Set the app name, support email and authorized domain `sasoshi.party`. The only scopes needed are `openid`, `email` and `profile`, which Google treats as non-sensitive, so no verification review is required. While the app is in **Testing** status, only the test users you list can sign in; click **Publish app** to let anyone on your allowlist in.
+1. **APIs & Services → OAuth consent screen**: choose **External**. Set the app name, support email and your domain as an authorized domain. The only scopes needed are `openid`, `email` and `profile`, which Google treats as non-sensitive, so no verification review is required. While the app is in **Testing** status, only the test users you list can sign in; click **Publish app** to let anyone on your allowlist in.
 2. **APIs & Services → Credentials → Create credentials → OAuth client ID → Web application**:
-   - Authorized JavaScript origin: `https://sasoshi.party`
-   - Authorized redirect URI: `https://sasoshi.party/auth/callback`
+   - Authorized JavaScript origin: `https://<domain>`
+   - Authorized redirect URI: `https://<domain>/auth/callback`
 3. Put the client ID and secret in `GOOGLE_CLIENT_ID` / `GOOGLE_CLIENT_SECRET`.
 
 For local development, also add `http://localhost:8080/auth/callback` as a redirect URI and run with `BASE_URL=http://localhost:8080`.
@@ -58,25 +58,25 @@ sudo cp .env.example /etc/simple-photos.env && sudo chmod 600 /etc/simple-photos
 sudo cp deploy/simple-photos.service /etc/systemd/system/
 sudo systemctl enable --now simple-photos
 ```
-Put it behind a TLS reverse proxy. There's a sample in `deploy/Caddyfile`. When `BASE_URL` starts with `https://`, the app sets cookies as `Secure`.
+Put it behind a TLS reverse proxy. `deploy/Caddyfile` is a ready-made config; it reads the domain from the `DOMAIN` environment variable, so set that for Caddy (`sudo systemctl edit caddy`, then add `Environment=DOMAIN=<domain>` under `[Service]`). When `BASE_URL` starts with `https://`, the app sets cookies as `Secure`.
 
 All settings are documented in `.env.example`.
 
 ## Running with Docker Compose (Postgres + MinIO)
 
-`docker-compose.yml` runs Postgres, MinIO (a self-hosted S3) and the app on one box, so you don't need a cloud bucket.
+`docker-compose.yml` runs Postgres, MinIO (a self-hosted S3), the app and Caddy on one box, so you don't need a cloud bucket. The domain is set once, as `DOMAIN` in `.env`: the site is served at `https://<domain>` and photos at `https://s3.<domain>`.
 
 ```sh
-cp .env.compose.example .env      # fill in passwords (openssl rand -hex 24) and Google creds
+cp .env.compose.example .env      # set DOMAIN, passwords (openssl rand -hex 24) and Google creds
 docker compose up -d --build
 ```
 
 - A one-shot `minio-init` service creates the bucket. It also adds a 31-day expiry rule and an access key that can only touch that bucket. It's safe to re-run.
-- All ports are bound to `127.0.0.1`. The MinIO web console is at http://localhost:9001; sign in as `MINIO_ROOT_USER`.
-- Browsers load photos directly from MinIO, so MinIO needs a public address. `deploy/Caddyfile` serves it at `s3.sasoshi.party`, which is the default `S3_PUBLIC_ENDPOINT`. Add a DNS record for `s3.sasoshi.party` pointing at the server.
-- To try it locally, set `BASE_URL=http://localhost:8080` and `S3_PUBLIC_ENDPOINT=http://localhost:9000` in `.env`. Also add `http://localhost:8080/auth/callback` as a redirect URI in Google.
+- Caddy listens publicly on ports 80 and 443 and gets HTTPS certificates automatically. Every other port is bound to `127.0.0.1`. The MinIO web console is at http://localhost:9001; sign in as `MINIO_ROOT_USER`.
+- Browsers load photos directly from MinIO, so MinIO needs a public address. Caddy serves it at `s3.<domain>`, which is the default `S3_PUBLIC_ENDPOINT`.
+- To try it locally, set `BASE_URL=http://localhost:8080` and `S3_PUBLIC_ENDPOINT=http://localhost:9000` in `.env`, and start everything except Caddy: `docker compose up -d --build postgres minio minio-init app`. Also add `http://localhost:8080/auth/callback` as a redirect URI in Google.
 - To run the app binary under systemd but keep Postgres and MinIO in Docker, run `docker compose up -d postgres minio minio-init`. Then point `/etc/simple-photos.env` at `localhost:5432` and `http://localhost:9000`.
-- Data lives in the `pgdata` and `miniodata` Docker volumes.
+- Data lives in the `pgdata` and `miniodata` Docker volumes; Caddy's certificates are in `caddydata`.
 
 ## Development
 

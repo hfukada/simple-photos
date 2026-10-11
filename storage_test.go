@@ -11,7 +11,7 @@ func TestPresignUsesPublicEndpoint(t *testing.T) {
 	t.Setenv("AWS_ACCESS_KEY_ID", "k")
 	t.Setenv("AWS_SECRET_ACCESS_KEY", "s")
 	cfg := &Config{S3Bucket: "photos", S3Region: "us-east-1", S3PathStyle: true,
-		S3Endpoint: "http://minio:9000", S3PublicEndpoint: "https://s3.sasoshi.party"}
+		S3Endpoint: "http://minio:9000", S3PublicEndpoint: "https://s3.example.com"}
 	st, err := newS3Store(context.Background(), cfg)
 	if err != nil {
 		t.Fatal(err)
@@ -20,7 +20,7 @@ func TestPresignUsesPublicEndpoint(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if !strings.HasPrefix(u, "https://s3.sasoshi.party/photos/photos/abc.jpg?") {
+	if !strings.HasPrefix(u, "https://s3.example.com/photos/photos/abc.jpg?") {
 		t.Errorf("presigned URL = %s", u)
 	}
 

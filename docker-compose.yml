@@ -1,12 +1,13 @@
 # Postgres + MinIO (+ the app) on one box.
 #
-#   cp .env.compose.example .env   # then fill in passwords and Google creds
+#   cp .env.compose.example .env   # then fill in DOMAIN, passwords, Google creds
 #   docker compose up -d --build
 #
 # Only want the backing services (e.g. you run the binary under systemd)?
 #   docker compose up -d postgres minio minio-init
 #
-# Everything is bound to 127.0.0.1; put Caddy (deploy/Caddyfile) in front.
+# Caddy is the only service exposed publicly (80/443); the rest are bound
+# to 127.0.0.1.
 
 services:
   postgres:
@@ -72,7 +73,7 @@ services:
         condition: service_completed_successfully
     environment:
       LISTEN_ADDR: ":8080"
-      BASE_URL: ${BASE_URL:-http://localhost:8080}
+      BASE_URL: ${BASE_URL:-https://${DOMAIN:?set DOMAIN in .env}}
       DATABASE_URL: postgres://photos:${POSTGRES_PASSWORD}@postgres:5432/photos?sslmode=disable
       GOOGLE_CLIENT_ID: ${GOOGLE_CLIENT_ID:?set GOOGLE_CLIENT_ID in .env}
       GOOGLE_CLIENT_SECRET: ${GOOGLE_CLIENT_SECRET:?set GOOGLE_CLIENT_SECRET in .env}
@@ -81,13 +82,32 @@ services:
       S3_BUCKET: ${S3_BUCKET:-photos}
       S3_REGION: us-east-1
       S3_ENDPOINT: http://minio:9000
-      S3_PUBLIC_ENDPOINT: ${S3_PUBLIC_ENDPOINT:-http://localhost:9000}
+      S3_PUBLIC_ENDPOINT: ${S3_PUBLIC_ENDPOINT:-https://s3.${DOMAIN}}
       S3_PATH_STYLE: "true"
       AWS_ACCESS_KEY_ID: ${S3_ACCESS_KEY:-simple-photos}
       AWS_SECRET_ACCESS_KEY: ${S3_SECRET_KEY}
     ports:
       - "127.0.0.1:8080:8080"
 
+  caddy:
+    image: caddy:2-alpine
+    restart: unless-stopped
+    depends_on: [app, minio]
+    environment:
+      DOMAIN: ${DOMAIN}
+      APP_UPSTREAM: app:8080
+      MINIO_UPSTREAM: minio:9000
+    volumes:
+      - ./deploy/Caddyfile:/etc/caddy/Caddyfile:ro
+      - caddydata:/data
+      - caddyconfig:/config
+    ports:
+      - "80:80"
+      - "443:443"
+      - "443:443/udp"
+
 volumes:
   pgdata:
   miniodata:
+  caddydata:
+  caddyconfig:

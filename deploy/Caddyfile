@@ -1,17 +1,24 @@
 # Caddy terminates TLS (automatic Let's Encrypt) and proxies to the app.
-sasoshi.party {
+# DOMAIN comes from the environment: the caddy service in docker-compose.yml
+# passes it from .env; for a host-installed Caddy set it with
+# `systemctl edit caddy` -> [Service] Environment=DOMAIN=your.domain
+#
+# Upstreams default to the host's loopback ports; docker-compose.yml points
+# them at the app and minio containers instead.
+
+{$DOMAIN} {
 	request_body {
 		max_size 12MB
 	}
-	reverse_proxy 127.0.0.1:8080
+	reverse_proxy {$APP_UPSTREAM:127.0.0.1:8080}
 }
 
-www.sasoshi.party {
-	redir https://sasoshi.party{uri} permanent
+www.{$DOMAIN} {
+	redir https://{$DOMAIN}{uri} permanent
 }
 
 # MinIO S3 API, used only when running MinIO via docker-compose.yml.
 # Browsers load photos from here through short-lived presigned URLs.
-s3.sasoshi.party {
-	reverse_proxy 127.0.0.1:9000
+s3.{$DOMAIN} {
+	reverse_proxy {$MINIO_UPSTREAM:127.0.0.1:9000}
 }
