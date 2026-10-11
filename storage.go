@@ -33,13 +33,22 @@ func newS3Store(ctx context.Context, c *Config) (*S3Store, error) {
 	if err != nil {
 		return nil, err
 	}
-	client := s3.NewFromConfig(awsCfg, func(o *s3.Options) {
-		if c.S3Endpoint != "" {
-			o.BaseEndpoint = aws.String(c.S3Endpoint)
-		}
-		o.UsePathStyle = c.S3PathStyle
-	})
-	return &S3Store{client: client, presign: s3.NewPresignClient(client), bucket: c.S3Bucket}, nil
+	newClient := func(endpoint string) *s3.Client {
+		return s3.NewFromConfig(awsCfg, func(o *s3.Options) {
+			if endpoint != "" {
+				o.BaseEndpoint = aws.String(endpoint)
+			}
+			o.UsePathStyle = c.S3PathStyle
+		})
+	}
+	client := newClient(c.S3Endpoint)
+	// Presigned URLs embed (and sign) the host, so they must be generated
+	// against the endpoint browsers can reach.
+	presignClient := client
+	if c.S3PublicEndpoint != "" {
+		presignClient = newClient(c.S3PublicEndpoint)
+	}
+	return &S3Store{client: client, presign: s3.NewPresignClient(presignClient), bucket: c.S3Bucket}, nil
 }
 
 func (s *S3Store) Put(ctx context.Context, key, contentType string, body []byte) error {

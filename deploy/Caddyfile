@@ -9,3 +9,9 @@ sasoshi.party {
 www.sasoshi.party {
 	redir https://sasoshi.party{uri} permanent
 }
+
+# MinIO S3 API, used only when running MinIO via docker-compose.yml.
+# Browsers load photos from here through short-lived presigned URLs.
+s3.sasoshi.party {
+	reverse_proxy 127.0.0.1:9000
+}

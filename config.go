@@ -24,11 +24,16 @@ type Config struct {
 	AllowedEmails      map[string]bool // empty + empty domains = any Google account
 	AllowedDomains     map[string]bool
 
-	S3Bucket    string
-	S3Region    string
-	S3Endpoint  string // optional, for R2 / B2 / MinIO etc.
-	S3PathStyle bool
-	S3Prefix    string
+	S3Bucket   string
+	S3Region   string
+	S3Endpoint string // optional, for R2 / B2 / MinIO etc.
+	// S3PublicEndpoint is the endpoint browsers use to fetch photos via
+	// presigned URLs, when it differs from the one the server uses (e.g.
+	// MinIO reachable as http://minio:9000 inside Docker but
+	// https://s3.sasoshi.party from outside). Defaults to S3Endpoint.
+	S3PublicEndpoint string
+	S3PathStyle      bool
+	S3Prefix         string
 	// S3ManageLifecycle makes the app install a 30-day expiry rule on the
 	// bucket at startup. This REPLACES any existing lifecycle rules, so only
 	// enable it on a bucket dedicated to this app.
@@ -47,6 +52,7 @@ func loadConfig() (*Config, error) {
 		S3Bucket:           os.Getenv("S3_BUCKET"),
 		S3Region:           env("S3_REGION", "us-east-1"),
 		S3Endpoint:         os.Getenv("S3_ENDPOINT"),
+		S3PublicEndpoint:   os.Getenv("S3_PUBLIC_ENDPOINT"),
 		S3PathStyle:        os.Getenv("S3_PATH_STYLE") == "true",
 		S3Prefix:           strings.Trim(os.Getenv("S3_PREFIX"), "/"),
 		S3ManageLifecycle:  os.Getenv("S3_MANAGE_LIFECYCLE") == "true",

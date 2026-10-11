@@ -62,6 +62,22 @@ Put it behind a TLS reverse proxy. There's a sample in `deploy/Caddyfile`. When 
 
 All settings are documented in `.env.example`.
 
+## Running with Docker Compose (Postgres + MinIO)
+
+`docker-compose.yml` runs Postgres, MinIO (a self-hosted S3) and the app on one box, so you don't need a cloud bucket.
+
+```sh
+cp .env.compose.example .env      # fill in passwords (openssl rand -hex 24) and Google creds
+docker compose up -d --build
+```
+
+- A one-shot `minio-init` service creates the bucket. It also adds a 31-day expiry rule and an access key that can only touch that bucket. It's safe to re-run.
+- All ports are bound to `127.0.0.1`. The MinIO web console is at http://localhost:9001; sign in as `MINIO_ROOT_USER`.
+- Browsers load photos directly from MinIO, so MinIO needs a public address. `deploy/Caddyfile` serves it at `s3.sasoshi.party`, which is the default `S3_PUBLIC_ENDPOINT`. Add a DNS record for `s3.sasoshi.party` pointing at the server.
+- To try it locally, set `BASE_URL=http://localhost:8080` and `S3_PUBLIC_ENDPOINT=http://localhost:9000` in `.env`. Also add `http://localhost:8080/auth/callback` as a redirect URI in Google.
+- To run the app binary under systemd but keep Postgres and MinIO in Docker, run `docker compose up -d postgres minio minio-init`. Then point `/etc/simple-photos.env` at `localhost:5432` and `http://localhost:9000`.
+- Data lives in the `pgdata` and `miniodata` Docker volumes.
+
 ## Development
 
 ```sh
